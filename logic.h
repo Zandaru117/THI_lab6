@@ -26,7 +26,7 @@ public:
                 res.logical++;
             }
 
-            if (line.find("#") != std::string::npos) {
+            if (line.find("//") != std::string::npos) {
                 res.comments++;
                 continue; 
             }
