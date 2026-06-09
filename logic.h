@@ -4,20 +4,23 @@
 #include <iostream>
 #include <stdexcept>
 
-
 class CppLineCounter : public LineCounter {
 public:
     AnalysisResult Analyze(const std::string& path) override {
-
-
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw std::runtime_error("Файл не найден");
-    }
-    AnalysisResult res;
-        std::string line;
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            throw std::runtime_error("Файл не найден");
+        }
+        
+        AnalysisResult res;
         bool multiLine = false;
-    while (std::getline(file, line)) {
+
+        while (true) {
+            std::string line;
+            if (!std::getline(file, line)) {
+                break;
+            }
+
             res.physical++;
 
             if (line.find(';') != std::string::npos || 
@@ -25,17 +28,18 @@ public:
                 line.find('}') != std::string::npos) {
                 res.logical++;
             }
+            size_t firstNonSpace = line.find_first_not_of(" \t");
+            bool isPreprocessor = (firstNonSpace != std::string::npos && line[firstNonSpace] == '#');
 
-            if (line.find("//") != std::string::npos) {
+            if (!isPreprocessor && line.find("//") != std::string::npos) {
                 res.comments++;
+            
+                if (file.eof()) break;
                 continue; 
             }
-
-
-            if (line.find("/*") != std::string::npos) {
+            if (!isPreprocessor && line.find("/*") != std::string::npos) {
                 multiLine = true;
             }
-
 
             if (multiLine) {
                 res.comments++;
@@ -43,16 +47,20 @@ public:
                     multiLine = false;
                 }
             }
+
+            if (file.eof()) {
+                break;
+            }
         }
         return res;
     }
-};
+}; 
 
 
 class CppCounterCreator : public CounterCreator {
 public:
     std::unique_ptr<LineCounter> CreateCounter() const override {
-        return std::make_unique<CppLineCounter>();
+        std::make_unique<CppLineCounter>();
     }
 };
 
@@ -74,7 +82,6 @@ public:
         }
     }
 };
-
 
 
 inline std::unique_ptr<ILogger> LoggerFactory::CreateLogger(int type) const {
